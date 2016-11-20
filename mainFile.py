@@ -203,11 +203,15 @@ def downloadMetOfficeRainfallForecast():
 						cursor.execute("SELECT count(gid) FROM metoffice.rain_forecast WHERE filename = '%s'" %(filename) )
 						records = cursor.fetchall()
 						#print(records[0][0])
-						
+
+
+						print(urllib.request.urlretrieve(url,filepath))
+						createWorldFile(filepath)						
 						
 						if records[0][0]== 0:
-							print(urllib.request.urlretrieve(url,filepath))
-							createWorldFile(filepath)
+							#print(urllib.request.urlretrieve(url,filepath))
+							#createWorldFile(filepath)
+							pass
 						else:
 							continue
 							#print ('Already downloaded: ',filename)
