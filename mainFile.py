@@ -157,26 +157,31 @@ def downloadMetOfficeRadar():
 						
 						
 						if records[0][0]== 0:
-							print(urllib.request.urlretrieve(url,filepath))
-							createWorldFile(filepath)
+							try:
+								print(urllib.request.urlretrieve(url,filepath))
+								createWorldFile(filepath)
+							except:
+								print("Invalid REST request, file was probably deleted before the script got it...")
+								print(url)
 						else:
 							continue
 							#print('Already downloaded: ', filename)
 
 
-def downloadMetOfficeRainfallForecast():
+def downloadMetOfficeRainfallForecast(loadedForecastTime):
 	metApiKey = "50102072-d813-4fd4-89fe-fc41a40687bc"
 	for i in range(5):		
 		jsonStr = r.get("http://datapoint.metoffice.gov.uk/public/data/layer/wxfcs/all/json/capabilities?key="+metApiKey)
 		print(jsonStr)
 		if str(jsonStr) == "<Response [404]>":
-			time.sleep(10.0*(i)**0.5)
+			time.sleep(10.0)
 			continue
 		else:
 			break 
 	data = jsonStr.json()
 	baseUrl = data['Layers']['BaseUrl']['$']
 	#print(baseUrl)
+
 
 	for j in data['Layers']['Layer']:
 			#print('j', type(j),j)
@@ -189,32 +194,29 @@ def downloadMetOfficeRainfallForecast():
 					defaultTime = j[observationType]['Timesteps']['@defaultTime']
 					#print('image format:', imageFormat)
 					#print(type(times),times)
-					#print(defaultTime)
-					
 					print ('Checking for new forecast')
-					for time in times:
-						url = baseUrl.replace('{LayerName}','Precipitation_Rate').replace('{ImageFormat}',imageFormat).replace('{Timestep}',str(time)).replace('{key}',metApiKey).replace('{DefaultTime}',defaultTime)
-						#print(url)
-						filename = 'Precipitation_Rate_'+str(defaultTime).replace(':','.')+'_'+str(time).replace(':','.')
-						filepath = 'C:\\temp\\'+filename.replace(':','.')+"."+imageFormat
-						
-						
-						cursor = conn.cursor()
-						cursor.execute("SELECT count(gid) FROM metoffice.rain_forecast WHERE filename = '%s'" %(filename) )
-						records = cursor.fetchall()
-						#print(records[0][0])
+					if loadedForecastTime != defaultTime:
+						loadedForecastTime = defaultTime
+						print ('New forecast found: '+ str(defaultTime))
+					
+					
+						for time in times:
+							url = baseUrl.replace('{LayerName}','Precipitation_Rate').replace('{ImageFormat}',imageFormat).replace('{Timestep}',str(time)).replace('{key}',metApiKey).replace('{DefaultTime}',defaultTime)
+							#print(url)
+							filename = 'Precipitation_Rate_'+str(defaultTime).replace(':','.')+'_'+str(time).replace(':','.')
+							filepath = 'C:\\temp\\'+filename.replace(':','.')+"."+imageFormat
+							
+							
+							cursor = conn.cursor()
+							cursor.execute("SELECT count(gid) FROM metoffice.rain_forecast WHERE filename = '%s'" %(filename) )
+							records = cursor.fetchall()
+							#print(records[0][0])
+	
+	
+							print(urllib.request.urlretrieve(url,filepath))
+							createWorldFile(filepath)						
+							
 
-
-						print(urllib.request.urlretrieve(url,filepath))
-						createWorldFile(filepath)						
-						
-						if records[0][0]== 0:
-							#print(urllib.request.urlretrieve(url,filepath))
-							#createWorldFile(filepath)
-							pass
-						else:
-							continue
-							#print ('Already downloaded: ',filename)
 							
 
 def createWorldFile(file):
@@ -270,17 +272,32 @@ if __name__ =='__main__':
 	mqttc.loop_start()
 	#mqttc.loop_forever()
 
+	currentForecastTime = None
+	shortLoop = 0
+	midLoop = 0
+	longLoop = 0
 	
 	while True:
-		downloadMetOfficeRainfallForecast()
-		downloadMetOfficeRadar()
+		#  Everything out here is done hourly
+		time.sleep(1)
+		if time.time() - longLoop > 60*60:
+			longLoop = time.time()
+			currentForecastTime = downloadMetOfficeRainfallForecast(currentForecastTime)
+			print(time.ctime())
+
+		if time.time() - midLoop > 15*60:
+			midLoop = time.time()
+			# Everything in here is done every 15mins
+			uploadForecast()
+			downloadMetOfficeRadar()
+			print(time.ctime())
 		
-		uploadForecast()
-		
-		for i in range(15):
+		if time.time() - shortLoop > 60:
+			shortLoop = time.time()
+			# Everything in here is done once a minute
 			#mqttc.loop_start()
+			print('Checking mqtt server',str(time.ctime()))
 			mqttc.loop()
-			time.sleep(60)
 		#findLocation('Bristol')
 		#downloadForecast("United_Kingdom","City_of_Bristol")
 		#downloadYesterday("United_Kingdom","City_of_Bristol")
