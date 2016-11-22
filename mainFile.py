@@ -283,18 +283,20 @@ if __name__ =='__main__':
 		if time.time() - longLoop > 60*60:
 			longLoop = time.time()
 			currentForecastTime = downloadMetOfficeRainfallForecast(currentForecastTime)
+			print(time.ctime())
 
 		if time.time() - midLoop > 15*60:
 			midLoop = time.time()
 			# Everything in here is done every 15mins
 			uploadForecast()
 			downloadMetOfficeRadar()
+			print(time.ctime())
 		
 		if time.time() - shortLoop > 60:
 			shortLoop = time.time()
 			# Everything in here is done once a minute
 			#mqttc.loop_start()
-			print('Checking mqtt server')
+			print('Checking mqtt server',str(time.ctime()))
 			mqttc.loop()
 		#findLocation('Bristol')
 		#downloadForecast("United_Kingdom","City_of_Bristol")
