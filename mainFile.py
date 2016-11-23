@@ -195,9 +195,10 @@ def downloadMetOfficeRainfallForecast(loadedForecastTime):
 					#print('image format:', imageFormat)
 					#print(type(times),times)
 					print ('Checking for new forecast')
-					if loadedForecastTime != defaultTime:
-						loadedForecastTime = defaultTime
-						print ('New forecast found: '+ str(defaultTime))
+					if loadedForecastTime == defaultTime:
+						print('Forecast up to date: '+str(loadedForecastTime))
+					else:
+						print ('New forecast found: '+ str(defaultTime)+" Old forecast time: "+str(loadedForecastTime))
 					
 					
 						for time in times:
@@ -209,14 +210,13 @@ def downloadMetOfficeRainfallForecast(loadedForecastTime):
 							
 							cursor = conn.cursor()
 							cursor.execute("SELECT count(gid) FROM metoffice.rain_forecast WHERE filename = '%s'" %(filename) )
-							records = cursor.fetchall()
+							#records = cursor.fetchall()
 							#print(records[0][0])
-	
 	
 							print(urllib.request.urlretrieve(url,filepath))
 							createWorldFile(filepath)						
 							
-
+	return defaultTime
 							
 
 def createWorldFile(file):
@@ -280,15 +280,15 @@ if __name__ =='__main__':
 	while True:
 		#  Everything out here is done hourly
 		time.sleep(1)
-		if time.time() - longLoop > 60*60:
+		if time.time() - longLoop > 20*60:
 			longLoop = time.time()
 			currentForecastTime = downloadMetOfficeRainfallForecast(currentForecastTime)
+			uploadForecast()
 			print(time.ctime())
 
 		if time.time() - midLoop > 15*60:
 			midLoop = time.time()
 			# Everything in here is done every 15mins
-			uploadForecast()
 			downloadMetOfficeRadar()
 			print(time.ctime())
 		
